@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const fileupload = require('express-fileupload');
 const jwt = require('jsonwebtoken');
 
@@ -37,6 +37,7 @@ async function run() {
             const { name, email, model, description, price, quantity, supplier } = req.body
             // images
             const { image } = req.files
+            console.log(image)
             const uniqueSuffix = Date.now() + '-' + image.name
             image.name = uniqueSuffix
             // move images in a folder
@@ -51,6 +52,15 @@ async function run() {
                     res.status(200).send(result)
                 }
             })
+        })
+
+        // delete an  inventory item api: http://localhost:5000/api/inventory
+
+        app.delete('/api/inventory/:id', async (req, res) => {
+            const { id } = req.params
+            const filter = { _id: ObjectId(id) }
+            const result = await inventoryCollection.deleteOne(filter)
+            res.send(result)
         })
 
 
