@@ -31,13 +31,20 @@ async function run() {
             res.send({ result })
         })
 
-        // inventory get api: http://localhost:5000/api/inventory
+        // get inventory api: http://localhost:5000/api/inventory
         app.get('/api/inventory', async (req, res) => {
             const limits = parseInt(req.query.limits) || 100
             const skip = parseInt(req.query.skip) || 0
             const query = {}
             const cursor = inventoryCollection.find(query)
             const result = await cursor.limit(limits).skip(skip).toArray()
+            res.send(result)
+        })
+        // get single inventory item api: http://localhost:5000/api/inventory/:id
+        app.get('/api/inventory/:id', async (req, res) => {
+            const { id } = req.params
+            const query = { _id: ObjectId(id) }
+            const result = await inventoryCollection.findOne(query)
             res.send(result)
         })
 
@@ -62,24 +69,27 @@ async function run() {
             })
         })
 
-        // delete an  inventory item api: http://localhost:5000/api/inventory
-
+        // delete an  inventory item api: http://localhost:5000/api/inventory/:id
         app.delete('/api/inventory/:id', async (req, res) => {
             const { id } = req.params
             const filter = { _id: ObjectId(id) }
             const image = req.body.image
-
-            console.log(image)
             fs.unlink(`./public${image}`, (err) => {
                 if (err) {
                     console.log(err)
                 }
             })
-
-
-
-
             const result = await inventoryCollection.deleteOne(filter)
+            res.send(result)
+        })
+
+
+        // update an  inventory item api: http://localhost:5000/api/inventory/:id
+        app.put('/api/inventory/:id', async (req, res) => {
+            const { id } = req.params
+            const { quantity } = req.body
+            const filter = { _id: ObjectId(id) }
+            const result = await inventoryCollection.updateOne(filter, { $set: { quantity } }, { upsert: true })
             res.send(result)
         })
 
