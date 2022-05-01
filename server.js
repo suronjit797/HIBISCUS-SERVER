@@ -4,6 +4,7 @@ require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const fileupload = require('express-fileupload');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -24,20 +25,27 @@ async function run() {
         await client.connect();
         console.log('Database connected ...');
 
+        // get inventory length api: http://localhost:5000/api/inventory/count
+        app.get('/api/inventory/count', async (req, res) => {
+            const result = await inventoryCollection.estimatedDocumentCount()
+            res.send({ result })
+        })
+
         // inventory get api: http://localhost:5000/api/inventory
         app.get('/api/inventory', async (req, res) => {
+            const limits = parseInt(req.query.limits) || 100
+            const skip = parseInt(req.query.skip) || 0
             const query = {}
             const cursor = inventoryCollection.find(query)
-            const result = await cursor.toArray()
+            const result = await cursor.limit(limits).skip(skip).toArray()
             res.send(result)
         })
 
         // inventory post api: http://localhost:5000/api/inventory
         app.post('/api/inventory', async (req, res) => {
-            const { name, email, model, description, price, quantity, supplier } = req.body
+            const { name, email, date, description, price, quantity, supplier } = req.body
             // images
             const { image } = req.files
-            console.log(image)
             const uniqueSuffix = Date.now() + '-' + image.name
             image.name = uniqueSuffix
             // move images in a folder
@@ -47,7 +55,7 @@ async function run() {
                     res.status(501).send({ message: 'server error occurred' })
                 } else {
                     const newImage = `/images/${image.name}`
-                    const newItem = { image: newImage, name, email, model, description, price, quantity, supplier }
+                    const newItem = { image: newImage, name, email, date, description, price, quantity, supplier }
                     const result = await inventoryCollection.insertOne(newItem)
                     res.status(200).send(result)
                 }
@@ -59,9 +67,22 @@ async function run() {
         app.delete('/api/inventory/:id', async (req, res) => {
             const { id } = req.params
             const filter = { _id: ObjectId(id) }
+            const image = req.body.image
+
+            console.log(image)
+            fs.unlink(`./public${image}`, (err) => {
+                if (err) {
+                    console.log(err)
+                }
+            })
+
+
+
+
             const result = await inventoryCollection.deleteOne(filter)
             res.send(result)
         })
+
 
 
 
