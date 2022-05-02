@@ -28,24 +28,39 @@ async function run() {
         // get inventory length api: http://localhost:5000/api/inventory/count
         app.get('/api/inventory/count', async (req, res) => {
             const result = await inventoryCollection.estimatedDocumentCount()
-            res.send({ result })
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
         })
 
         // get inventory api: http://localhost:5000/api/inventory
         app.get('/api/inventory', async (req, res) => {
             const limits = parseInt(req.query.limits) || 100
             const skip = parseInt(req.query.skip) || 0
+            if (limits > 100 || skip < 0) {
+                return res.status(502).send({ message: 'Bad Gateway' })
+            }
             const query = {}
             const cursor = inventoryCollection.find(query)
             const result = await cursor.limit(limits).skip(skip).toArray()
-            res.send(result)
+            if (result) {
+                return res.status(200).send(result)
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
         })
         // get single inventory item api: http://localhost:5000/api/inventory/:id
         app.get('/api/inventory/:id', async (req, res) => {
             const { id } = req.params
             const query = { _id: ObjectId(id) }
             const result = await inventoryCollection.findOne(query)
-            res.send(result)
+            if (result) {
+                return res.status(200).send(result)
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
         })
 
         // inventory post api: http://localhost:5000/api/inventory
@@ -80,7 +95,11 @@ async function run() {
                 }
             })
             const result = await inventoryCollection.deleteOne(filter)
-            res.send(result)
+            if (result) {
+                return res.status(200).send(result)
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
         })
 
 
@@ -88,9 +107,17 @@ async function run() {
         app.put('/api/inventory/:id', async (req, res) => {
             const { id } = req.params
             const { quantity } = req.body
+
+            if(!quantity){
+                return res.status(501).send({message: "Not Implemented"})
+            }
             const filter = { _id: ObjectId(id) }
             const result = await inventoryCollection.updateOne(filter, { $set: { quantity } }, { upsert: true })
-            res.send(result)
+            if (result) {
+                return res.status(200).send(result)
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
         })
 
 
