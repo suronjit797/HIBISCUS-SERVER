@@ -26,6 +26,8 @@ HTML, CSS, JavaScript, React, JSX, RegEx, React-Router-Dom, React-Toastify, Axio
 - MongoDB 
 - express-fileupload
 - cors 
+- dotenv
+- jsonwebtoken
 
 
 ## Installation

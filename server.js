@@ -15,6 +15,27 @@ app.use(express.json())
 app.use(express.static('public'))
 app.use(fileupload())
 
+
+const jwtVerify = async (req, res, next) => {
+    const authHeaders = req.headers.authorization
+    if (!authHeaders) {
+        return res.status(401).send({ message: 'unauthorized access' })
+    }
+
+    const token = authHeaders.split(' ')[1]
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send({ message: 'forbidden access' })
+        }
+        req.decoded = decoded
+    })
+
+    next()
+}
+
+
+
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.bupbu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 const inventoryCollection = client.db("inventory").collection("products");   //have to change
@@ -24,6 +45,21 @@ async function run() {
     try {
         await client.connect();
         console.log('Database connected ...');
+
+        // jwt token with login
+        app.post('/api/user/login', async (req, res) => {
+            const email = req.body.email
+            if (email) {
+                const user = {
+                    email: email,
+                    role: 'user'
+                }
+                const token = jwt.sign(user, process.env.TOKEN_SECRET, {
+                    expiresIn: "2d"
+                })
+                res.status(200).send({ token })
+            }
+        })
 
         // get inventory length api: http://localhost:5000/api/inventory/count
         app.get('/api/inventory/count', async (req, res) => {
@@ -51,6 +87,7 @@ async function run() {
                 return res.status(500).send({ message: 'Internal Server Error' })
             }
         })
+
         // get single inventory item api: http://localhost:5000/api/inventory/:id
         app.get('/api/inventory/:id', async (req, res) => {
             const { id } = req.params
@@ -89,11 +126,13 @@ async function run() {
             const { id } = req.params
             const filter = { _id: ObjectId(id) }
             const image = req.body.image
-            fs.unlink(`./public${image}`, (err) => {
-                if (err) {
-                    console.log(err)
-                }
-            })
+            if (image) {
+                fs.unlink(`./public${image}`, (err) => {
+                    if (err) {
+                        console.log(err)
+                    }
+                })
+            }
             const result = await inventoryCollection.deleteOne(filter)
             if (result) {
                 return res.status(200).send(result)
@@ -108,13 +147,32 @@ async function run() {
             const { id } = req.params
             const { quantity } = req.body
 
-            if(!quantity){
-                return res.status(501).send({message: "Not Implemented"})
+            if (quantity < 0) {
+                return res.status(501).send({ message: "Not Implemented" })
             }
             const filter = { _id: ObjectId(id) }
             const result = await inventoryCollection.updateOne(filter, { $set: { quantity } }, { upsert: true })
             if (result) {
                 return res.status(200).send(result)
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+
+        // const my items
+        app.get('/api/my-items', jwtVerify, async (req, res) => {
+            const email = req.decoded.email
+            if (email) {
+                const limits = parseInt(req.query.limits) || 100
+                const skip = parseInt(req.query.skip) || 0
+                const query = { email }
+                const cursor = inventoryCollection.find(query)
+                const result = await cursor.limit(limits).skip(skip).toArray()
+                if (result) {
+                    return res.status(200).send(result)
+                } else {
+                    return res.status(500).send({ message: 'Internal Server Error' })
+                }
             } else {
                 return res.status(500).send({ message: 'Internal Server Error' })
             }
