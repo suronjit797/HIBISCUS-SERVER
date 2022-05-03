@@ -15,6 +15,11 @@ app.use(express.json())
 app.use(express.static('public'))
 app.use(fileupload())
 
+const admin = [
+    'suronjit797@gmail.com',
+    'mesuronjit@gmail.com'
+]
+
 
 const jwtVerify = async (req, res, next) => {
     const authHeaders = req.headers.authorization
@@ -27,8 +32,8 @@ const jwtVerify = async (req, res, next) => {
             return res.status(403).send({ message: 'forbidden access' })
         }
         req.decoded = decoded
+        next()
     })
-    next()
 }
 
 
@@ -51,7 +56,10 @@ async function run() {
         // jwt token with login
         app.post('/api/user/login', async (req, res) => {
             const email = req.body.email
-            const role = req.body.role || "user"
+            const filter = admin.find(e => e === email)
+            const role = filter ? 'admin' : 'user'       //role have to fetch form data base
+            console.log(role, email)
+
             if (email) {
                 const user = { email, role }
                 const token = jwt.sign(user, process.env.TOKEN_SECRET, {
@@ -61,6 +69,11 @@ async function run() {
             }
         })
 
+
+        app.get('/api/user/jwt-verify', jwtVerify, (req, res) => {
+            res.send(req.decoded)
+        })
+
         /* ---------------------------------
         ---------- inventory api -----------
         -----------------------------------*/
@@ -68,6 +81,17 @@ async function run() {
         // get inventory length api: http://localhost:5000/api/inventory/count
         app.get('/api/inventory/count', async (req, res) => {
             const result = await inventoryCollection.estimatedDocumentCount()
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+
+        // get my items length api: http://localhost:5000/api/inventory/count
+        app.get('/api/my-item/count', jwtVerify, async (req, res) => {
+            const email = req.decoded.email
+            const result = await inventoryCollection.countDocuments({ email })
             if (result) {
                 return res.status(200).send({ result })
             } else {
@@ -166,6 +190,7 @@ async function run() {
         // const my items
         app.get('/api/my-items', jwtVerify, async (req, res) => {
             const email = req.decoded.email
+
             if (email) {
                 const limits = parseInt(req.query.limits) || 100
                 const skip = parseInt(req.query.skip) || 0
@@ -206,9 +231,9 @@ async function run() {
         })
 
         // remove a blog
-        app.delete('/api/blog/:id', async(req, res)=>{
-            const {id} = req.params
-            if(id){
+        app.delete('/api/blog/:id', async (req, res) => {
+            const { id } = req.params
+            if (id) {
                 const filter = { _id: ObjectId(id) }
                 const result = await blogCollection.deleteOne(filter)
                 res.status(200).send(result)
