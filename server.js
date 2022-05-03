@@ -21,7 +21,6 @@ const jwtVerify = async (req, res, next) => {
     if (!authHeaders) {
         return res.status(401).send({ message: 'unauthorized access' })
     }
-
     const token = authHeaders.split(' ')[1]
     jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
         if (err) {
@@ -29,7 +28,6 @@ const jwtVerify = async (req, res, next) => {
         }
         req.decoded = decoded
     })
-
     next()
 }
 
@@ -38,28 +36,34 @@ const jwtVerify = async (req, res, next) => {
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.bupbu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-const inventoryCollection = client.db("inventory").collection("products");   //have to change
-
+const inventoryCollection = client.db("inventory").collection("products");
+const blogCollection = client.db("inventory").collection("blog");
 
 async function run() {
     try {
         await client.connect();
         console.log('Database connected ...');
 
+        /* ---------------------------------
+        -------------- jwt api -------------
+        -----------------------------------*/
+
         // jwt token with login
         app.post('/api/user/login', async (req, res) => {
             const email = req.body.email
+            const role = req.body.role || "user"
             if (email) {
-                const user = {
-                    email: email,
-                    role: 'user'
-                }
+                const user = { email, role }
                 const token = jwt.sign(user, process.env.TOKEN_SECRET, {
                     expiresIn: "2d"
                 })
                 res.status(200).send({ token })
             }
         })
+
+        /* ---------------------------------
+        ---------- inventory api -----------
+        -----------------------------------*/
 
         // get inventory length api: http://localhost:5000/api/inventory/count
         app.get('/api/inventory/count', async (req, res) => {
@@ -175,6 +179,39 @@ async function run() {
                 }
             } else {
                 return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+
+        /* ---------------------------------
+        -------------- blog api ------------
+        -----------------------------------*/
+
+        // get all blog
+        app.get('/api/blog', async (req, res) => {
+            const filter = {}
+            const cursor = blogCollection.find(filter)
+            const result = await cursor.toArray()
+            res.status(200).send(result)
+        })
+
+
+        // post a blog
+        app.post('/api/blog', async (req, res) => {
+            const { post } = req.body
+            if (post.question && post.answer) {
+                const result = await blogCollection.insertOne(post)
+                return res.status(200).send(result)
+            }
+            return res.status(400).send({ message: 'Bad Request' })
+        })
+
+        // remove a blog
+        app.delete('/api/blog/:id', async(req, res)=>{
+            const {id} = req.params
+            if(id){
+                const filter = { _id: ObjectId(id) }
+                const result = await blogCollection.deleteOne(filter)
+                res.status(200).send(result)
             }
         })
 
