@@ -58,7 +58,6 @@ async function run() {
             const email = req.body.email
             const filter = admin.find(e => e === email)
             const role = filter ? 'admin' : 'user'       //role have to fetch form data base
-            console.log(role, email)
 
             if (email) {
                 const user = { email, role }
@@ -87,6 +86,71 @@ async function run() {
                 return res.status(500).send({ message: 'Internal Server Error' })
             }
         })
+
+        // Out of stock less than 0
+        app.get('/api/stock-out', async (req, res) => {
+            const filter = { quantity: { $lt: 1 } }
+            const result = await inventoryCollection.countDocuments(filter)
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+        // low quantity less than 20
+        app.get('/api/low-quantity', async (req, res) => {
+            const filter = { quantity: { $lt: 20 } }
+            const result = await inventoryCollection.countDocuments(filter)
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+        // high quantity more than 100
+        app.get('/api/high-quantity', async (req, res) => {
+            const filter = { quantity: { $gt: 100 } }
+            const result = await inventoryCollection.countDocuments(filter)
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+        // suppliers
+        app.get('/api/suppliers', async (req, res) => {
+            const filter = {}
+            const cursor = inventoryCollection.find(filter)
+            const items = cursor
+            
+            const result = []
+            await items.forEach(item => {
+                if (result.indexOf(item.supplier) === -1) {
+                    return result.push(item.supplier)
+                }
+            })
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+        // recent products
+        app.get('/api/recent', async (req, res) => {
+            const filter = {}
+            const cursor = inventoryCollection.find(filter).sort({_id: -1}).limit(4)
+            const result = await cursor.toArray()
+                        
+            if (result) {
+                return res.status(200).send({ result })
+            } else {
+                return res.status(500).send({ message: 'Internal Server Error' })
+            }
+        })
+
+
+
+
 
         // get my items length api: http://localhost:5000/api/inventory/count
         app.get('/api/my-item/count', jwtVerify, async (req, res) => {
@@ -142,7 +206,16 @@ async function run() {
                     res.status(501).send({ message: 'server error occurred' })
                 } else {
                     const newImage = `/images/${image.name}`
-                    const newItem = { image: newImage, name, email, date, description, price, quantity, supplier }
+                    const newItem = {
+                        image: newImage,
+                        name,
+                        email,
+                        date,
+                        description,
+                        price: parseInt(price),
+                        quantity: parseInt(quantity),
+                        supplier
+                    }
                     const result = await inventoryCollection.insertOne(newItem)
                     res.status(200).send(result)
                 }
