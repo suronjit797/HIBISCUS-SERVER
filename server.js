@@ -36,9 +36,6 @@ const jwtVerify = async (req, res, next) => {
     })
 }
 
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.bupbu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 const inventoryCollection = client.db("inventory").collection("products");
@@ -68,7 +65,6 @@ async function run() {
             }
         })
 
-
         app.get('/api/user/jwt-verify', jwtVerify, (req, res) => {
             res.send(req.decoded)
         })
@@ -83,7 +79,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ message: 'Internal Server Error' })
+                return res.status(500).send({ result: 0 })
             }
         })
 
@@ -94,7 +90,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ message: 'Internal Server Error' })
+                return res.status(500).send({ result: 0 })
             }
         })
         // low quantity less than 20
@@ -104,7 +100,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ message: 'Internal Server Error' })
+                return res.status(500).send({ result: 0 })
             }
         })
         // high quantity more than 100
@@ -114,7 +110,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ message: 'Internal Server Error' })
+                return res.status(500).send({ result: 0 })
             }
         })
         // suppliers
@@ -122,7 +118,7 @@ async function run() {
             const filter = {}
             const cursor = inventoryCollection.find(filter)
             const items = cursor
-            
+
             const result = []
             await items.forEach(item => {
                 if (result.indexOf(item.supplier) === -1) {
@@ -138,9 +134,9 @@ async function run() {
         // recent products
         app.get('/api/recent', async (req, res) => {
             const filter = {}
-            const cursor = inventoryCollection.find(filter).sort({_id: -1}).limit(4)
+            const cursor = inventoryCollection.find(filter).sort({ _id: -1 }).limit(4)
             const result = await cursor.toArray()
-                        
+
             if (result) {
                 return res.status(200).send({ result })
             } else {
