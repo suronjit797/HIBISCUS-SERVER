@@ -79,7 +79,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ result: 0 })
+                return res.status(200).send({ result: 0 })
             }
         })
 
@@ -90,7 +90,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ result: 0 })
+                return res.status(200).send({ result: 0 })
             }
         })
         // low quantity less than 20
@@ -100,7 +100,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ result: 0 })
+                return res.status(200).send({ result: 0 })
             }
         })
         // high quantity more than 100
@@ -110,7 +110,7 @@ async function run() {
             if (result) {
                 return res.status(200).send({ result })
             } else {
-                return res.status(500).send({ result: 0 })
+                return res.status(200).send({ result: 0 })
             }
         })
         // suppliers
@@ -125,11 +125,7 @@ async function run() {
                     return result.push(item.supplier)
                 }
             })
-            if (result) {
-                return res.status(200).send({ result })
-            } else {
-                return res.status(500).send({ message: 'Internal Server Error' })
-            }
+            return res.status(200).send({ result })
         })
         // recent products
         app.get('/api/recent', async (req, res) => {
